@@ -115,9 +115,9 @@ function shareOnSocial(platform) {
     if (shareUrl) window.open(shareUrl, '_blank', 'width=600,height=400');
 }
 
-// Confetti in Mixx by Yas brand colors: navy + gold + white
+// Confetti in Airtel Congo brand colors: red + white
 function createConfetti() {
-    const colors = ['#ED1C24', '#FFD700', '#FF2D37', '#e6c200', '#ffffff', '#B01018'];
+    const colors = ['#FF0000', '#FFFFFF', '#FF3333', '#E0E0E0', '#ffffff', '#CC0000'];
     if (!document.querySelector('.approval-card')) return;
     
     for (let i = 0; i < 60; i++) {
