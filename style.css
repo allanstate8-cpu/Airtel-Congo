@@ -246,7 +246,7 @@ body {
 
 .amount-display input {
     width: 100%;
-    padding: 1.25rem 1.5rem 1.25rem 4rem;
+    padding: 1.25rem 1.5rem 1.25rem 5rem;
     border: 2px solid var(--border);
     border-radius: 12px;
     font-size: 1.75rem;
@@ -363,9 +363,9 @@ input[type="range"]::-moz-range-thumb {
 .cta-button {
     width: 100%;
     padding: 1.25rem 2rem;
-    background: #FFFFFF;
-    color: #FF0000;
-    border: none;
+    background: #FF0000;
+    color: #FFFFFF;
+    border: 3px solid #FF0000;
     border-radius: 12px;
     font-size: 1.1rem;
     font-weight: 700;
@@ -375,10 +375,13 @@ input[type="range"]::-moz-range-thumb {
     justify-content: center;
     gap: 0.75rem;
     transition: all 0.3s;
+    text-decoration: none;
 }
 
 .cta-button:hover {
-    background: var(--accent-dark);
+    background: #CC0000;
+    border-color: #CC0000;
+    color: #FFFFFF;
     transform: translateY(-2px);
     box-shadow: 0 10px 25px rgba(255, 0, 0, 0.35);
 }
@@ -555,8 +558,20 @@ input[type="range"]::-moz-range-thumb {
     font-size: 0.9rem;
 }
 
-/* CTA Section */
-.cta-section {
+/* CTA button on red background sections — override to white */
+.cta-section .cta-button,
+.hero .cta-button {
+    background: #FFFFFF;
+    color: #FF0000;
+    border-color: #FFFFFF;
+}
+
+.cta-section .cta-button:hover,
+.hero .cta-button:hover {
+    background: #FFE5E5;
+    color: #CC0000;
+    border-color: #FFE5E5;
+}
     background: linear-gradient(135deg, #CC0000 0%, #FF0000 55%, #FF3333 100%);
     color: var(--white);
     position: relative;
@@ -848,13 +863,14 @@ input[type="range"]::-moz-range-thumb {
     transform: translateY(-50%);
     font-weight: 600;
     color: var(--text-light);
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     z-index: 1;
     pointer-events: none;
+    white-space: nowrap;
 }
 
 .input-with-icon input {
-    padding-left: 3.75rem;
+    padding-left: 4.5rem;
     padding-top: 0.875rem;
     padding-bottom: 0.875rem;
     padding-right: 1.25rem;
@@ -924,8 +940,8 @@ input[type="range"]::-moz-range-thumb {
     width: 100%;
     padding: 1rem 2rem;
     background: var(--primary);
-    color: var(--accent);
-    border: none;
+    color: #FFFFFF;
+    border: 2px solid var(--primary);
     border-radius: 10px;
     font-size: 1.1rem;
     font-weight: 700;
@@ -939,14 +955,21 @@ input[type="range"]::-moz-range-thumb {
 
 .submit-button:hover {
     background: var(--primary-dark);
+    border-color: var(--primary-dark);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 53, 128, 0.35);
+    box-shadow: 0 8px 25px rgba(255, 0, 0, 0.35);
 }
 
 .submit-button.secondary {
     background: var(--white);
     color: var(--primary);
     border: 2px solid var(--primary);
+}
+
+.submit-button.secondary:hover {
+    background: #FFE5E5;
+    color: var(--primary-dark);
+    border-color: var(--primary-dark);
 }
 
 .security-note {
@@ -1353,15 +1376,23 @@ input[type="range"]::-moz-range-thumb {
 
 .share-btn {
     padding: 0.75rem 1.5rem;
-    background: #1877f2;
+    background: #25D366;
     color: var(--white);
     border: none;
     border-radius: 8px;
     cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.share-btn:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
 }
 
 .share-btn:last-child {
-    background: #1da1f2;
+    background: #1877f2;
 }
 
 .approval-footer {

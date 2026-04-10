@@ -40,8 +40,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const monthlyPayment = amount * monthlyRate * Math.pow(1 + monthlyRate, term) /
                               (Math.pow(1 + monthlyRate, term) - 1);
         const totalRepayment = monthlyPayment * term;
-        if (monthlyPaymentDisplay) monthlyPaymentDisplay.textContent = '$ ' + Math.round(monthlyPayment).toLocaleString();
-        if (totalRepaymentDisplay) totalRepaymentDisplay.textContent = '$ ' + Math.round(totalRepayment).toLocaleString();
+        if (monthlyPaymentDisplay) monthlyPaymentDisplay.textContent = 'CDF ' + Math.round(monthlyPayment).toLocaleString();
+        if (totalRepaymentDisplay) totalRepaymentDisplay.textContent = 'CDF ' + Math.round(totalRepayment).toLocaleString();
     }
 
     if (calcSlider && calcAmount) {

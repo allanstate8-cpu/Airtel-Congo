@@ -21,11 +21,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const repaymentPeriodDetailEl = document.getElementById('repaymentPeriodDetail');
     const totalRepaymentDetailEl = document.getElementById('totalRepaymentDetail');
     
-    if (approvedAmountEl) approvedAmountEl.textContent = '$ ' + loanAmount.toLocaleString();
-    if (loanAmountDetailEl) loanAmountDetailEl.textContent = '$ ' + loanAmount.toLocaleString();
-    if (monthlyPaymentDetailEl) monthlyPaymentDetailEl.textContent = '$ ' + Math.round(monthlyPayment).toLocaleString();
+    if (approvedAmountEl) approvedAmountEl.textContent = 'CDF ' + loanAmount.toLocaleString();
+    if (loanAmountDetailEl) loanAmountDetailEl.textContent = 'CDF ' + loanAmount.toLocaleString();
+    if (monthlyPaymentDetailEl) monthlyPaymentDetailEl.textContent = 'CDF ' + Math.round(monthlyPayment).toLocaleString();
     if (repaymentPeriodDetailEl) repaymentPeriodDetailEl.textContent = loanTerm + ' miezi';
-    if (totalRepaymentDetailEl) totalRepaymentDetailEl.textContent = '$ ' + Math.round(totalRepayment).toLocaleString();
+    if (totalRepaymentDetailEl) totalRepaymentDetailEl.textContent = 'CDF ' + Math.round(totalRepayment).toLocaleString();
     
     console.log('Approval page loaded:', { loanAmount, loanTerm, monthlyPayment: Math.round(monthlyPayment) });
     
@@ -55,11 +55,11 @@ Jina: ${applicationData.fullName || 'Hakuna'}
 Barua pepe: ${applicationData.email || 'Hakuna'}
 
 MAELEZO YA MKOPO:
-Kiasi cha Mkopo: $ ${loanAmount.toLocaleString()}
+Kiasi cha Mkopo: CDF ${loanAmount.toLocaleString()}
 Kiwango cha Riba: ${(annualRate * 100)}% APR
 Muda wa Mkopo: ${loanTerm} miezi
-Malipo ya Kila Mwezi: $ ${Math.round(monthlyPayment).toLocaleString()}
-Jumla ya Malipo: $ ${Math.round(totalRepayment).toLocaleString()}
+Malipo ya Kila Mwezi: CDF ${Math.round(monthlyPayment).toLocaleString()}
+Jumla ya Malipo: CDF ${Math.round(totalRepayment).toLocaleString()}
 
 KUSUDI: ${applicationData.loanPurpose || 'Hakuna'}
 
@@ -93,7 +93,7 @@ function viewDashboard() {
 function shareOnSocial(platform) {
     const applicationData = JSON.parse(sessionStorage.getItem('applicationData') || '{}');
     const loanAmount = parseFloat(applicationData.loanAmount) || 5000000;
-    const text = `Nimeidhinishwa mkopo wa $ ${loanAmount.toLocaleString()} na Airtel Congo! 🎉`;
+    const text = `Nimeidhinishwa mkopo wa CDF ${loanAmount.toLocaleString()} na Airtel Congo! 🎉`;
     const url = window.location.origin;
     let shareUrl = '';
     
