@@ -26,9 +26,7 @@ const CLIENT_OPTIONS = {
     connectTimeoutMS:         10000,   // 10s to establish connection
     socketTimeoutMS:          0,       // NEVER timeout on socket (0 = infinite)
 
-    // Keep-alive at TCP level — prevents firewall/proxy from killing idle connections
-    keepAlive:             true,
-    keepAliveInitialDelay: 30000,      // send first keepAlive after 30s idle
+    // ✅ REMOVED: keepAlive and keepAliveInitialDelay (not supported in mongodb driver v6+)
 
     // Heartbeat — driver pings server to detect drops early
     heartbeatFrequencyMS: 10000,       // ping every 10s
