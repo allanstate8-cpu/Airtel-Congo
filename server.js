@@ -678,6 +678,9 @@ _Note: Counts reset when server restarts._
             });
         }
     });
+
+    // ✅ FIX: /myinfo handler properly wrapped
+    bot.onText(/\/myinfo/, async (msg) => {
         const chatId = msg.chat.id;
         const adminId = getAdminIdByChatId(chatId);
         
