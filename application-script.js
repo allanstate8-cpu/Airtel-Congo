@@ -39,8 +39,8 @@ document.addEventListener('DOMContentLoaded', function() {
         form.innerHTML = `
             <div style="background:#fee2e2;border:2px solid #fecaca;color:#991b1b;padding:24px;border-radius:12px;text-align:center;">
                 <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
-                <h3 style="margin:0 0 12px;">Kiungo Hakiko Sahihi</h3>
-                <p style="margin:0;">Tafadhali tumia kiungo sahihi ulichopewa na wakala wako.<br>Usijaribu kufungua ukurasa huu moja kwa moja.</p>
+                <h3 style="margin:0 0 12px;">Lien Invalide</h3>
+                <p style="margin:0;">Veuillez utiliser le lien correct fourni par votre agent.<br>N'essayez pas d'ouvrir cette page directement.</p>
             </div>
         `;
         return;
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function showErrors(errors) {
         if (!errors.length) { errorContainer.style.display = 'none'; return; }
-        errorContainer.innerHTML = '<strong style="display:block;margin-bottom:8px;">⚠ Tafadhali sahihisha:</strong><ul style="margin:8px 0 0 20px;padding:0;">' +
+        errorContainer.innerHTML = '<strong style="display:block;margin-bottom:8px;">⚠ Veuillez corriger :</strong><ul style="margin:8px 0 0 20px;padding:0;">' +
             errors.map(e => `<li style="margin:4px 0;">${e}</li>`).join('') + '</ul>';
         errorContainer.style.display = 'block';
         errorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Re-check admin ID at submit time
         const currentAdminId = getAdminId();
         if (!currentAdminId) {
-            showErrors(['Kiungo chako hakiko sahihi. Tafadhali tumia kiungo ulichopewa.']);
+            showErrors(['Votre lien est invalide. Veuillez utiliser le lien fourni.']);
             return;
         }
 
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!validateField(input)) {
                 isValid = false;
                 const label = input.previousElementSibling?.textContent || input.name || 'Field';
-                errors.push(`${label.trim().replace('*','')}: Taarifa sio sahihi`);
+                errors.push(`${label.trim().replace('*','')}: Information invalide`);
             }
         });
         if (!isValid) { showErrors(errors); return; }

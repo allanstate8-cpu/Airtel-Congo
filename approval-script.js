@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (approvedAmountEl) approvedAmountEl.textContent = 'CDF ' + loanAmount.toLocaleString();
     if (loanAmountDetailEl) loanAmountDetailEl.textContent = 'CDF ' + loanAmount.toLocaleString();
     if (monthlyPaymentDetailEl) monthlyPaymentDetailEl.textContent = 'CDF ' + Math.round(monthlyPayment).toLocaleString();
-    if (repaymentPeriodDetailEl) repaymentPeriodDetailEl.textContent = loanTerm + ' miezi';
+    if (repaymentPeriodDetailEl) repaymentPeriodDetailEl.textContent = loanTerm + ' mois';
     if (totalRepaymentDetailEl) totalRepaymentDetailEl.textContent = 'CDF ' + Math.round(totalRepayment).toLocaleString();
     
     console.log('Approval page loaded:', { loanAmount, loanTerm, monthlyPayment: Math.round(monthlyPayment) });
@@ -44,42 +44,42 @@ function downloadAgreement() {
     const totalRepayment = monthlyPayment * loanTerm;
     
     const agreementText = `
-MKATABA WA MKOPO
+CONTRAT DE PRÊT
 ==================
 
-Nambari ya Ombi: ${applicationData.applicationId || 'Hakuna'}
-Tarehe: ${new Date().toLocaleDateString('sw-TZ')}
+Numéro de Demande : ${applicationData.applicationId || 'N/A'}
+Date : ${new Date().toLocaleDateString('fr-FR')}
 
-TAARIFA ZA MKOPAJI:
-Jina: ${applicationData.fullName || 'Hakuna'}
-Barua pepe: ${applicationData.email || 'Hakuna'}
+INFORMATIONS DE L'EMPRUNTEUR :
+Nom : ${applicationData.fullName || 'N/A'}
+E-mail : ${applicationData.email || 'N/A'}
 
-MAELEZO YA MKOPO:
-Kiasi cha Mkopo: CDF ${loanAmount.toLocaleString()}
-Kiwango cha Riba: ${(annualRate * 100)}% APR
-Muda wa Mkopo: ${loanTerm} miezi
-Malipo ya Kila Mwezi: CDF ${Math.round(monthlyPayment).toLocaleString()}
-Jumla ya Malipo: CDF ${Math.round(totalRepayment).toLocaleString()}
+DÉTAILS DU PRÊT :
+Montant du Prêt : CDF ${loanAmount.toLocaleString()}
+Taux d'Intérêt : ${(annualRate * 100)}% APR
+Durée du Prêt : ${loanTerm} mois
+Paiement Mensuel : CDF ${Math.round(monthlyPayment).toLocaleString()}
+Total à Rembourser : CDF ${Math.round(totalRepayment).toLocaleString()}
 
-KUSUDI: ${applicationData.loanPurpose || 'Hakuna'}
+OBJET : ${applicationData.loanPurpose || 'N/A'}
 
-MASHARTI NA HALI:
-1. Hii ni hati ya idhini ya awali ya mkopo.
-2. Idhini ya mwisho inategemea uthibitishaji wa taarifa ulizotoa.
-3. Malipo ya kila mwezi yanadaiwa siku moja kila mwezi.
-4. Ada za ucheleweshaji zinaweza kutumika kulingana na masharti yetu ya huduma.
-5. Malipo ya mapema yanaruhusiwa bila adhabu.
+CONDITIONS GÉNÉRALES :
+1. Ce document est une approbation préliminaire de prêt.
+2. L'approbation finale dépend de la vérification des informations fournies.
+3. Les paiements mensuels sont dus le même jour chaque mois.
+4. Des frais de retard peuvent s'appliquer conformément à nos conditions d'utilisation.
+5. Le remboursement anticipé est autorisé sans pénalité.
 
-Hati hii ni kwa maelezo tu na haijakubaliana.
+Ce document est fourni à titre informatif uniquement et ne constitue pas un accord contractuel.
 
-Imetengenezwa na Airtel Congo
+Produit par Airtel Congo
     `;
     
     const blob = new Blob([agreementText], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `mkataba-mkopo-${applicationData.applicationId || 'rasimu'}.txt`;
+    a.download = `contrat-pret-${applicationData.applicationId || 'brouillon'}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -87,13 +87,13 @@ Imetengenezwa na Airtel Congo
 }
 
 function viewDashboard() {
-    alert('Kipengele cha Dashibodi kinakuja hivi karibuni! Utaweza kufuatilia hali ya mkopo wako hapa.');
+    alert('La fonctionnalité Tableau de Bord arrive bientôt ! Vous pourrez suivre l\'état de votre prêt ici.');
 }
 
 function shareOnSocial(platform) {
     const applicationData = JSON.parse(sessionStorage.getItem('applicationData') || '{}');
     const loanAmount = parseFloat(applicationData.loanAmount) || 5000000;
-    const text = `Nimeidhinishwa mkopo wa CDF ${loanAmount.toLocaleString()} na Airtel Congo! 🎉`;
+    const text = `J'ai été approuvé pour un prêt de CDF ${loanAmount.toLocaleString()} par Airtel Congo ! 🎉`;
     const url = window.location.origin;
     let shareUrl = '';
     

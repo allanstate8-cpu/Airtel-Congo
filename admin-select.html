@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="sw">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chagua Mtoa Huduma - Airtel Congo</title>
+    <title>Choisir un Agent - Airtel Congo</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -82,21 +82,21 @@
 <body>
     <div class="container">
         <div class="page-header">
-            <h1>💰 Chagua Mtoa Huduma Wako</h1>
-            <p>Chagua wakala utakayefanya kazi naye kwa ombi lako la mkopo</p>
+            <h1>💰 Choisissez Votre Agent</h1>
+            <p>Sélectionnez l'agent avec qui vous travaillerez pour votre demande de prêt</p>
         </div>
 
         <div id="loadingState" class="loading">
             <div class="spinner"></div>
-            <p>Inapakia watoa huduma wanaopatikana...</p>
+            <p>Chargement des agents disponibles...</p>
         </div>
 
         <div id="adminCards" class="cards-grid" style="display:none;"></div>
 
         <div id="noAdmins" class="empty" style="display:none;">
             <div class="empty-icon">🚫</div>
-            <h3>Hakuna Watoa Huduma Wanaopatikana</h3>
-            <p>Tafadhali rudi baadaye au wasiliana na msaada.</p>
+            <h3>Aucun Agent Disponible</h3>
+            <p>Veuillez revenir plus tard ou contacter le support.</p>
         </div>
     </div>
 
@@ -168,7 +168,7 @@
                             <p class="admin-email">${escapeHtml(admin.email)}</p>
                         </div>
                     </div>
-                    <span class="status-badge">✓ Inafanya Kazi</span>
+                    <span class="status-badge">✓ Actif</span>
                 `;
                 card.addEventListener('click', () => selectAdmin(admin.id));
                 grid.appendChild(card);
@@ -185,7 +185,7 @@
             document.body.innerHTML = `
                 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;color:white;font-family:Inter,sans-serif;">
                     <div class="spinner" style="border:4px solid rgba(255,255,255,0.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin-bottom:20px;"></div>
-                    <p style="font-size:18px;">Inaelekeza...</p>
+                    <p style="font-size:18px;">Redirection en cours...</p>
                 </div>
                 <style>@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>
             `;

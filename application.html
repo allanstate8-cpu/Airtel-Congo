@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="sw">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ombi la Mkopo - Airtel Congo</title>
+    <title>Demande de Prêt - Airtel Congo</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +16,7 @@
             <div class="logo-small">💰 Airtel Congo</div>
             <div class="security-indicator">
                 <span class="lock-icon">🔒</span>
-                <span>Ombi Salama</span>
+                <span>Demande Sécurisée</span>
             </div>
         </div>
 
@@ -25,42 +25,42 @@
             <div class="progress-steps">
                 <div class="step-item active">
                     <div class="step-circle">1</div>
-                    <span>Maelezo Binafsi</span>
+                    <span>Informations Personnelles</span>
                 </div>
                 <div class="step-line"></div>
                 <div class="step-item">
                     <div class="step-circle">2</div>
-                    <span>Uthibitishaji</span>
+                    <span>Vérification</span>
                 </div>
                 <div class="step-line"></div>
                 <div class="step-item">
                     <div class="step-circle">3</div>
-                    <span>Idhini</span>
+                    <span>Approbation</span>
                 </div>
             </div>
         </div>
 
         <!-- Application Form -->
         <div class="form-card">
-            <h1 class="form-title">Tuambie Kuhusu Wewe</h1>
-            <p class="form-subtitle">Tunahitaji taarifa kadhaa ili kuchakata ombi lako la mkopo</p>
+            <h1 class="form-title">Parlez-nous de Vous</h1>
+            <p class="form-subtitle">Nous avons besoin de quelques informations pour traiter votre demande de prêt</p>
 
             <form id="applicationForm">
                 <div class="form-section">
-                    <h3 class="section-title">Taarifa za Kibinafsi</h3>
+                    <h3 class="section-title">Informations Personnelles</h3>
                     
                     <div class="form-group">
-                        <label>Jina Kamili *</label>
+                        <label>Nom Complet *</label>
                         <input type="text" id="fullName" required placeholder="John Doe">
                     </div>
 
                     <div class="form-group">
-                        <label>Anwani ya Barua Pepe *</label>
+                        <label>Adresse E-mail *</label>
                         <input type="email" id="email" required placeholder="john@example.com">
                     </div>
 
                     <div class="form-group">
-                        <label>Mapato ya Kila Mwezi *</label>
+                        <label>Revenu Mensuel *</label>
                         <div class="input-with-icon">
                             <span class="input-icon">CDF</span>
                             <input type="number" id="monthlyIncome" required placeholder="3000000" min="0">
@@ -70,52 +70,52 @@
                 </div>
 
                 <div class="form-section">
-                    <h3 class="section-title">Maelezo ya Mkopo</h3>
+                    <h3 class="section-title">Détails du Prêt</h3>
                     
                     <div class="form-group">
-                        <label>Kiasi cha Mkopo Unaohitaji *</label>
+                        <label>Montant du Prêt Souhaité *</label>
                         <div class="input-with-icon">
                             <span class="input-icon">CDF</span>
                             <input type="number" id="loanAmount" required placeholder="5000000" min="500000" max="50000000" step="100000">
                         </div>
-                        <small class="help-text">Kati ya CDF 500,000 na CDF 50,000,000</small>
+                        <small class="help-text">Entre CDF 500 000 et CDF 50 000 000</small>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Madhumuni ya Mkopo *</label>
+                            <label>Objet du Prêt *</label>
                             <select id="loanPurpose" required>
-                                <option value="">Chagua madhumuni</option>
-                                <option value="personal">Matumizi Binafsi</option>
-                                <option value="business">Biashara</option>
-                                <option value="education">Elimu</option>
-                                <option value="medical">Matibabu</option>
-                                <option value="home">Uboreshaji wa Nyumba</option>
-                                <option value="debt">Kuunganisha Madeni</option>
-                                <option value="other">Mengineyo</option>
+                                <option value="">Choisir l'objet</option>
+                                <option value="personal">Usage Personnel</option>
+                                <option value="business">Commerce</option>
+                                <option value="education">Éducation</option>
+                                <option value="medical">Médical</option>
+                                <option value="home">Amélioration du Logement</option>
+                                <option value="debt">Consolidation de Dettes</option>
+                                <option value="other">Autre</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Muda wa Malipo *</label>
+                            <label>Durée de Remboursement *</label>
                             <select id="repaymentPeriod" required>
-                                <option value="">Chagua muda</option>
-                                <option value="3">Miezi 3</option>
-                                <option value="6">Miezi 6</option>
-                                <option value="12">Miezi 12</option>
-                                <option value="24">Miezi 24</option>
-                                <option value="36">Miezi 36</option>
+                                <option value="">Choisir la durée</option>
+                                <option value="3">3 Mois</option>
+                                <option value="6">6 Mois</option>
+                                <option value="12">12 Mois</option>
+                                <option value="24">24 Mois</option>
+                                <option value="36">36 Mois</option>
                             </select>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label>Hali ya Ajira *</label>
+                        <label>Statut d'Emploi *</label>
                         <select id="employmentStatus" required>
-                            <option value="">Chagua hali</option>
-                            <option value="employed">Mwajiriwa</option>
-                            <option value="self-employed">Mwajiri wa Kibinafsi</option>
-                            <option value="business">Mmiliki wa Biashara</option>
-                            <option value="retired">Mstaafu</option>
+                            <option value="">Choisir le statut</option>
+                            <option value="employed">Employé</option>
+                            <option value="self-employed">Travailleur Indépendant</option>
+                            <option value="business">Chef d'Entreprise</option>
+                            <option value="retired">Retraité</option>
                         </select>
                     </div>
                 </div>
@@ -123,19 +123,19 @@
                 <div class="consent-box">
                     <input type="checkbox" id="consent" required>
                     <label for="consent">
-                        Ninathibitisha kuwa taarifa zote zilizotolewa ni sahihi na ninakubali 
-                        <a href="#">Masharti na Hali</a> na <a href="#">Sera ya Faragha</a>
+                        Je confirme que toutes les informations fournies sont exactes et j'accepte les 
+                        <a href="#">Conditions Générales</a> et la <a href="#">Politique de Confidentialité</a>
                     </label>
                 </div>
 
                 <button type="submit" class="submit-button">
-                    Endelea na Uthibitishaji
+                    Continuer vers la Vérification
                     <span class="arrow">→</span>
                 </button>
 
                 <div class="security-note">
                     <span class="lock-icon">🔒</span>
-                    <p>Taarifa yako imesimbwa na ni salama. Kamwe hatushiriki data yako.</p>
+                    <p>Vos informations sont cryptées et sécurisées. Nous ne partageons jamais vos données.</p>
                 </div>
             </form>
         </div>
