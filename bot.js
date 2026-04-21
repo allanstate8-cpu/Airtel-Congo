@@ -1,21 +1,21 @@
 /**
  * Nova AI — Telegram Bot (Node.js)
- * M-Pesa Manual Verification + Google Gemini AI Chat
+ * M-Pesa Manual Verification + Claude AI Chat
  */
 
 import "dotenv/config";
 import TelegramBot from "node-telegram-bot-api";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
 import Database from "better-sqlite3";
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
 const {
   BOT_TOKEN,
   ADMIN_TELEGRAM_ID,
-  MPESA_NUMBER    = "0712XXXXXX",
-  MPESA_NAME      = "Your Name",
-  PAYMENT_AMOUNT  = "500",
-  GEMINI_API_KEY,
+  MPESA_NUMBER   = "0712XXXXXX",
+  MPESA_NAME     = "Your Name",
+  PAYMENT_AMOUNT = "500",
+  ANTHROPIC_API_KEY,
   BOT_PERSONALITY = `You are Nova, a warm, clever, and friendly personal AI assistant.
 You speak naturally like a real person — use contractions, occasional humor,
 and always address the user by their first name when you know it.
@@ -24,14 +24,14 @@ Never mention that you are an AI unless directly and persistently asked.`,
 
 const ADMIN_ID = parseInt(ADMIN_TELEGRAM_ID, 10);
 
-if (!BOT_TOKEN || !GEMINI_API_KEY || !ADMIN_ID) {
-  console.error("❌  Missing required env vars (BOT_TOKEN, GEMINI_API_KEY, ADMIN_TELEGRAM_ID). Check your .env file.");
+if (!BOT_TOKEN || !ANTHROPIC_API_KEY || !ADMIN_ID) {
+  console.error("❌  Missing required env vars. Check your .env file.");
   process.exit(1);
 }
 
 // ─── CLIENTS ───────────────────────────────────────────────────────────────────
-const bot   = new TelegramBot(BOT_TOKEN, { polling: true });
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const bot       = new TelegramBot(BOT_TOKEN, { polling: true });
+const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
 // ─── DATABASE ──────────────────────────────────────────────────────────────────
 const db = new Database("users.db");
@@ -87,17 +87,17 @@ const stmts = {
   statsByStatus: db.prepare("SELECT status, COUNT(*) as count FROM users GROUP BY status"),
 };
 
-const now          = ()             => new Date().toISOString();
-const getUser      = (id)           => stmts.getUser.get(id);
+const getUser      = (id)                => stmts.getUser.get(id);
 const createUser   = (id, uname, full, first) =>
   stmts.insertUser.run({ telegram_id: id, username: uname, full_name: full, first_name: first, created_at: now() });
-const setPending   = (id, code)     => stmts.setPending.run(code.toUpperCase(), id);
-const setPaid      = (id)           => stmts.setPaid.run(now(), id);
-const setUnpaid    = (id)           => stmts.setUnpaid.run(id);
-const isCodeUsed   = (code)         => !!stmts.isCodeUsed.get(code.toUpperCase());
-const markCodeUsed = (code)         => stmts.markCodeUsed.run(code.toUpperCase(), now());
+const setPending   = (id, code)          => stmts.setPending.run(code.toUpperCase(), id);
+const setPaid      = (id)                => stmts.setPaid.run(now(), id);
+const setUnpaid    = (id)                => stmts.setUnpaid.run(id);
+const isCodeUsed   = (code)              => !!stmts.isCodeUsed.get(code.toUpperCase());
+const markCodeUsed = (code)              => stmts.markCodeUsed.run(code.toUpperCase(), now());
 const saveMsg      = (id, role, content) => stmts.saveMsg.run(id, role, content, now());
-const getHistory   = (id)           => stmts.getHistory.all(id).reverse(); // oldest first
+const getHistory   = (id)                => stmts.getHistory.all(id).reverse(); // oldest first
+const now          = ()                  => new Date().toISOString();
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
 const isMpesaCode = (text) =>
@@ -217,8 +217,8 @@ bot.on("message", async (msg) => {
 
     const keyboard = {
       inline_keyboard: [[
-        { text: "✅  Approve", callback_data: `approve_${id}_${code}` },
-        { text: "❌  Reject",  callback_data: `reject_${id}_${code}`  },
+        { text: "✅  Approve", callback_data: `approve|${id}|${code}` },
+        { text: "❌  Reject",  callback_data: `reject|${id}|${code}`  },
       ]],
     };
 
@@ -253,7 +253,8 @@ bot.on("callback_query", async (query) => {
 
   bot.answerCallbackQuery(query.id);
 
-  const [action, targetIdStr, code] = query.data.split("_");
+  // FIX: Use "|" as separator so M-Pesa codes with underscores don't break parsing
+  const [action, targetIdStr, code] = query.data.split("|");
   const targetId = parseInt(targetIdStr, 10);
   const suffix   = action === "approve" ? "\n\n✅ *Approved by admin.*" : "\n\n❌ *Rejected by admin.*";
 
@@ -306,29 +307,31 @@ bot.on("callback_query", async (query) => {
   } catch (_) {}
 });
 
-// ─── AI CHAT (Gemini) ──────────────────────────────────────────────────────────
-async function chatWithAI(telegramId, firstName, text) {
+// ─── AI CHAT ───────────────────────────────────────────────────────────────────
+async function chatWithAI(telegramId, firstName, userText) {
   bot.sendChatAction(telegramId, "typing");
-  saveMsg(telegramId, "user", text);
 
+  // Get history BEFORE saving the new message to avoid duplicate user turn
   const history = getHistory(telegramId);
 
-  // Build Gemini-format history (exclude the last user message — sent separately)
-  const geminiHistory = history.slice(0, -1).map(({ role, content }) => ({
-    role: role === "assistant" ? "model" : "user",
-    parts: [{ text: content }],
-  }));
+  // Save new user message
+  saveMsg(telegramId, "user", userText);
+
+  // Build messages array: history + new user message
+  const messages = [
+    ...history.map(({ role, content }) => ({ role, content })),
+    { role: "user", content: userText },
+  ];
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: BOT_PERSONALITY,
+    const response = await anthropic.messages.create({
+      model:      "claude-sonnet-4-5",   // FIX: corrected model name
+      max_tokens: 1000,
+      system:     BOT_PERSONALITY,
+      messages,
     });
 
-    const chat  = model.startChat({ history: geminiHistory });
-    const result = await chat.sendMessage(text);
-    const reply  = result.response.text();
-
+    const reply = response.content[0].text;
     saveMsg(telegramId, "assistant", reply);
     bot.sendMessage(telegramId, reply);
 
@@ -342,6 +345,7 @@ async function chatWithAI(telegramId, firstName, text) {
 
 // ─── ERROR HANDLING ────────────────────────────────────────────────────────────
 bot.on("polling_error", (err) => console.error("Polling error:", err.message));
+
 process.on("unhandledRejection", (err) => console.error("Unhandled rejection:", err));
 
 console.log("🤖  Nova Bot is running...");
