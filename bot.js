@@ -100,18 +100,23 @@ const getHistory   = (id)                => stmts.getHistory.all(id).reverse(); 
 const now          = ()                  => new Date().toISOString();
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
+
+// Escape all special chars for MarkdownV2
+const escMd = (text) =>
+  String(text).replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, "\\$&");
+
 const isMpesaCode = (text) =>
   /^[A-Z0-9]{8,15}$/i.test(text.replace(/\s/g, ""));
 
 const paymentPrompt = (firstName) =>
-  `👋 Hey *${firstName}!*\n\n` +
-  `Welcome to *Nova AI* — your personal AI assistant.\n\n` +
+  `👋 Hey *${escMd(firstName)}\\!*\n\n` +
+  `Welcome to *Nova AI* — your personal AI assistant\\.\n\n` +
   `━━━━━━━━━━━━━━━━━━━━━━\n` +
   `💳 *Unlock Access*\n` +
   `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-  `Send *KSh ${PAYMENT_AMOUNT}* via M\\-Pesa:\n\n` +
-  `📱 *Till/Number:* \`${MPESA_NUMBER}\`\n` +
-  `👤 *Name:* ${MPESA_NAME}\n\n` +
+  `Send *KSh ${escMd(PAYMENT_AMOUNT)}* via M\\-Pesa:\n\n` +
+  `📱 *Till/Number:* \`${escMd(MPESA_NUMBER)}\`\n` +
+  `👤 *Name:* ${escMd(MPESA_NAME)}\n\n` +
   `After paying, *send your M\\-Pesa confirmation code* here\\.\n` +
   `_Example: \`RG47XY1234\`_\n\n` +
   `⚡ Access is activated within minutes\\.`;
@@ -126,12 +131,12 @@ bot.onText(/\/start/, (msg) => {
 
   if (user.status === "paid") {
     bot.sendMessage(id,
-      `Welcome back, *${first_name}\\!* 🎉\n\nI'm ready — what would you like to talk about?`,
+      `Welcome back, *${escMd(first_name)}\\!* 🎉\n\nI'm ready — what would you like to talk about\\?`,
       { parse_mode: "MarkdownV2" }
     );
   } else if (user.status === "pending") {
     bot.sendMessage(id,
-      `⏳ Hi *${first_name}\\!* Your payment is being reviewed\\. Please hang tight\\.`,
+      `⏳ Hi *${escMd(first_name)}\\!* Your payment is being reviewed\\. Please hang tight\\.`,
       { parse_mode: "MarkdownV2" }
     );
   } else {
@@ -232,7 +237,7 @@ bot.on("message", async (msg) => {
     }
 
     bot.sendMessage(id,
-      `✅ Code *${code}* received\\!\n\n` +
+      `✅ Code *${escMd(code)}* received\\!\n\n` +
       `We're verifying your payment now\\. You'll be notified as soon as it's confirmed\\. ⏳`,
       { parse_mode: "MarkdownV2" }
     );
