@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "node-telegram-bot-api": "^0.66.0",
-    "@google/generative-ai": "^0.15.0",
+    "@google/generative-ai": "latest",
     "better-sqlite3": "^9.4.3",
     "dotenv": "^16.4.5"
   }

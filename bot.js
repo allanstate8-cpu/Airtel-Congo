@@ -33,7 +33,7 @@ if (!BOT_TOKEN || !GEMINI_API_KEY || !ADMIN_ID) {
 const bot   = new TelegramBot(BOT_TOKEN, { polling: true });
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
+  model: "gemini-2.0-flash",          // ✅ FIXED: updated model name
   systemInstruction: BOT_PERSONALITY,
 });
 
@@ -149,7 +149,7 @@ bot.onText(/\/start/, (msg) => {
 // ─── /approve (admin only) ─────────────────────────────────────────────────────
 // Usage:
 //   /approve        → approves yourself (the admin)
-//   /approve 123456 → approves user with that Telegram ID
+//   /approve 123456 → approves any user by their Telegram ID
 bot.onText(/\/approve(?:\s+(\d+))?/, (msg, match) => {
   if (msg.from.id !== ADMIN_ID) return;
 
