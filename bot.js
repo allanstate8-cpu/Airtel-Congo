@@ -30,9 +30,9 @@ if (!BOT_TOKEN || !GEMINI_API_KEY || !ADMIN_ID) {
 }
 
 // ─── CLIENTS ───────────────────────────────────────────────────────────────────
-const bot    = new TelegramBot(BOT_TOKEN, { polling: true });
-const genAI  = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model  = genAI.getGenerativeModel({
+const bot   = new TelegramBot(BOT_TOKEN, { polling: true });
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
   systemInstruction: BOT_PERSONALITY,
 });
@@ -87,7 +87,7 @@ const stmts = {
     ORDER BY created_at DESC
     LIMIT 12
   `),
-  allUsers:      db.prepare("SELECT full_name, username, status, created_at FROM users ORDER BY created_at DESC LIMIT 30"),
+  allUsers:      db.prepare("SELECT full_name, username, status, telegram_id, created_at FROM users ORDER BY created_at DESC LIMIT 30"),
   statsByStatus: db.prepare("SELECT status, COUNT(*) as count FROM users GROUP BY status"),
 };
 
@@ -146,6 +146,44 @@ bot.onText(/\/start/, (msg) => {
   }
 });
 
+// ─── /approve (admin only) ─────────────────────────────────────────────────────
+// Usage:
+//   /approve        → approves yourself (the admin)
+//   /approve 123456 → approves user with that Telegram ID
+bot.onText(/\/approve(?:\s+(\d+))?/, (msg, match) => {
+  if (msg.from.id !== ADMIN_ID) return;
+
+  const targetId = match[1] ? parseInt(match[1], 10) : ADMIN_ID;
+  const user = getUser(targetId);
+
+  if (!user) {
+    bot.sendMessage(ADMIN_ID,
+      `❌ No user found with ID ${targetId}.\nThey must send /start to the bot first.`
+    );
+    return;
+  }
+
+  if (user.status === "paid") {
+    bot.sendMessage(ADMIN_ID, `ℹ️ ${user.full_name} is already approved.`);
+    return;
+  }
+
+  setPaid(targetId);
+  bot.sendMessage(ADMIN_ID, `✅ ${user.full_name} (ID: ${targetId}) has been approved!`);
+
+  if (targetId !== ADMIN_ID) {
+    bot.sendMessage(targetId,
+      `🎉 *Payment Verified\\!*\n\nYour access is now unlocked\\. Welcome to Nova AI\\! 🚀\n\nI'm your personal assistant — ask me anything, anytime\\.`,
+      { parse_mode: "MarkdownV2" }
+    ).catch(() => {});
+  }
+});
+
+// ─── /myid — get your Telegram ID ─────────────────────────────────────────────
+bot.onText(/\/myid/, (msg) => {
+  bot.sendMessage(msg.from.id, `🆔 Your Telegram ID is: ${msg.from.id}`);
+});
+
 // ─── /users (admin) ────────────────────────────────────────────────────────────
 bot.onText(/\/users/, (msg) => {
   if (msg.from.id !== ADMIN_ID) return;
@@ -153,11 +191,11 @@ bot.onText(/\/users/, (msg) => {
   if (!users.length) return bot.sendMessage(ADMIN_ID, "No users yet.");
 
   const emap = { paid: "✅", pending: "⏳", unpaid: "🔒" };
-  const lines = ["👥 *All Users:*\n"];
-  for (const { full_name, username, status } of users) {
-    lines.push(`${emap[status] ?? "❓"} ${full_name} (@${username ?? "N/A"}) — _${status}_`);
+  const lines = ["👥 All Users:\n"];
+  for (const { full_name, username, status, telegram_id } of users) {
+    lines.push(`${emap[status] ?? "❓"} ${full_name} (@${username ?? "N/A"}) [${telegram_id}] — ${status}`);
   }
-  bot.sendMessage(ADMIN_ID, lines.join("\n"), { parse_mode: "Markdown" });
+  bot.sendMessage(ADMIN_ID, lines.join("\n"));
 });
 
 // ─── /stats (admin) ────────────────────────────────────────────────────────────
@@ -166,11 +204,11 @@ bot.onText(/\/stats/, (msg) => {
   const rows  = stmts.statsByStatus.all();
   const total = rows.reduce((s, r) => s + r.count, 0);
   const emap  = { paid: "✅", pending: "⏳", unpaid: "🔒" };
-  const lines = [`📊 *Bot Stats*\n\nTotal users: *${total}*\n`];
+  const lines = [`📊 Bot Stats\n\nTotal users: ${total}\n`];
   for (const { status, count } of rows) {
-    lines.push(`${emap[status] ?? "❓"} ${status}: *${count}*`);
+    lines.push(`${emap[status] ?? "❓"} ${status}: ${count}`);
   }
-  bot.sendMessage(ADMIN_ID, lines.join("\n"), { parse_mode: "Markdown" });
+  bot.sendMessage(ADMIN_ID, lines.join("\n"));
 });
 
 // ─── MAIN MESSAGE HANDLER ──────────────────────────────────────────────────────
@@ -184,11 +222,13 @@ bot.on("message", async (msg) => {
   createUser(id, username, fullName, first_name);
   const user = getUser(id);
 
+  // ── PAID → AI ──────────────────────────────────────────────────────────────
   if (user.status === "paid") {
     await chatWithAI(id, first_name, text);
     return;
   }
 
+  // ── PENDING ────────────────────────────────────────────────────────────────
   if (user.status === "pending") {
     bot.sendMessage(id,
       "⏳ Your payment is still being verified. Please be patient — the admin will approve shortly."
@@ -196,6 +236,7 @@ bot.on("message", async (msg) => {
     return;
   }
 
+  // ── UNPAID: check if they sent an M-Pesa code ─────────────────────────────
   if (isMpesaCode(text)) {
     const code = text.replace(/\s/g, "").toUpperCase();
 
@@ -208,14 +249,15 @@ bot.on("message", async (msg) => {
 
     setPending(id, code);
 
+    // Plain text — no Markdown — to avoid parse errors from special chars in names
     const adminText =
-      `🔔 *New Payment Claim*\n\n` +
-      `👤 *Name:* ${fullName}\n` +
-      `🆔 *Username:* @${username ?? "N/A"}\n` +
-      `📲 *Telegram ID:* \`${id}\`\n` +
-      `💳 *M-Pesa Code:* \`${code}\`\n` +
-      `💰 *Amount:* KSh ${PAYMENT_AMOUNT}\n` +
-      `🕐 *Time:* ${new Date().toLocaleString("en-KE")}\n\n` +
+      `🔔 New Payment Claim\n\n` +
+      `👤 Name: ${fullName}\n` +
+      `🆔 Username: @${username ?? "N/A"}\n` +
+      `📲 Telegram ID: ${id}\n` +
+      `💳 M-Pesa Code: ${code}\n` +
+      `💰 Amount: KSh ${PAYMENT_AMOUNT}\n` +
+      `🕐 Time: ${new Date().toLocaleString("en-KE")}\n\n` +
       `Verify on your M-Pesa statement, then approve or reject below.`;
 
     const keyboard = {
@@ -226,10 +268,7 @@ bot.on("message", async (msg) => {
     };
 
     try {
-      await bot.sendMessage(ADMIN_ID, adminText, {
-        parse_mode: "Markdown",
-        reply_markup: keyboard,
-      });
+      await bot.sendMessage(ADMIN_ID, adminText, { reply_markup: keyboard });
     } catch (err) {
       console.error("Admin notification failed:", err.message);
     }
@@ -242,6 +281,7 @@ bot.on("message", async (msg) => {
     return;
   }
 
+  // ── UNPAID, no code ────────────────────────────────────────────────────────
   bot.sendMessage(id, paymentPrompt(first_name), { parse_mode: "MarkdownV2" });
 });
 
@@ -257,8 +297,8 @@ bot.on("callback_query", async (query) => {
 
   const [action, targetIdStr, code] = query.data.split("|");
   const targetId = parseInt(targetIdStr, 10);
-  const suffix   = action === "approve" ? "\n\n✅ *Approved by admin.*" : "\n\n❌ *Rejected by admin.*";
 
+  // ── APPROVE ────────────────────────────────────────────────────────────────
   if (action === "approve") {
     setPaid(targetId);
     markCodeUsed(code);
@@ -273,8 +313,16 @@ bot.on("callback_query", async (query) => {
     } catch (err) {
       console.error(`Could not message user ${targetId}:`, err.message);
     }
+
+    try {
+      await bot.editMessageText(
+        query.message.text + "\n\n✅ Approved.",
+        { chat_id: ADMIN_ID, message_id: query.message.message_id }
+      );
+    } catch (_) {}
   }
 
+  // ── REJECT ─────────────────────────────────────────────────────────────────
   if (action === "reject") {
     setUnpaid(targetId);
 
@@ -282,45 +330,40 @@ bot.on("callback_query", async (query) => {
       await bot.sendMessage(targetId,
         `❌ *Payment Not Verified*\n\n` +
         `We couldn't confirm your payment\\. Please check:\n` +
-        `• The M-Pesa code was entered correctly\n` +
+        `• The M\\-Pesa code was entered correctly\n` +
         `• Payment was sent to the right number\n` +
-        `• The amount was KSh ${PAYMENT_AMOUNT}\n\n` +
+        `• The amount was KSh ${escMd(PAYMENT_AMOUNT)}\n\n` +
         `Try again or contact support\\.`,
         { parse_mode: "MarkdownV2" }
       );
     } catch (err) {
       console.error(`Could not message user ${targetId}:`, err.message);
     }
-  }
 
-  try {
-    await bot.editMessageText(
-      query.message.text + suffix,
-      {
-        chat_id:    ADMIN_ID,
-        message_id: query.message.message_id,
-        parse_mode: "Markdown",
-      }
-    );
-  } catch (_) {}
+    try {
+      await bot.editMessageText(
+        query.message.text + "\n\n❌ Rejected.",
+        { chat_id: ADMIN_ID, message_id: query.message.message_id }
+      );
+    } catch (_) {}
+  }
 });
 
 // ─── AI CHAT (Gemini) ──────────────────────────────────────────────────────────
 async function chatWithAI(telegramId, firstName, userText) {
   bot.sendChatAction(telegramId, "typing");
 
-  // Get history before saving new message
   const history = getHistory(telegramId);
   saveMsg(telegramId, "user", userText);
 
-  // Convert history to Gemini format (role: "user" | "model")
+  // Gemini requires alternating user/model turns
   const geminiHistory = history.map(({ role, content }) => ({
     role:  role === "assistant" ? "model" : "user",
     parts: [{ text: content }],
   }));
 
   try {
-    const chat = model.startChat({ history: geminiHistory });
+    const chat   = model.startChat({ history: geminiHistory });
     const result = await chat.sendMessage(userText);
     const reply  = result.response.text();
 
