@@ -33,7 +33,7 @@ if (!BOT_TOKEN || !GEMINI_API_KEY || !ADMIN_ID) {
 const bot   = new TelegramBot(BOT_TOKEN, { polling: true });
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash",          // ✅ FIXED: updated model name
+  model: "gemini-2.0-flash-lite",
   systemInstruction: BOT_PERSONALITY,
 });
 
@@ -48,6 +48,7 @@ db.exec(`
     first_name   TEXT,
     status       TEXT    DEFAULT 'unpaid',
     mpesa_code   TEXT,
+    awaiting_code INTEGER DEFAULT 0,
     created_at   TEXT,
     paid_at      TEXT
   );
@@ -66,42 +67,78 @@ db.exec(`
   );
 `);
 
+// Add awaiting_code column if it doesn't exist (for existing databases)
+try {
+  db.exec(`ALTER TABLE users ADD COLUMN awaiting_code INTEGER DEFAULT 0`);
+} catch (_) {}
+
 console.log("✅  Database ready.");
 
 // ─── DB HELPERS ────────────────────────────────────────────────────────────────
 const stmts = {
-  getUser:       db.prepare("SELECT * FROM users WHERE telegram_id = ?"),
-  insertUser:    db.prepare(`
-    INSERT OR IGNORE INTO users (telegram_id, username, full_name, first_name, status, created_at)
-    VALUES (@telegram_id, @username, @full_name, @first_name, 'unpaid', @created_at)
+  getUser:         db.prepare("SELECT * FROM users WHERE telegram_id = ?"),
+  insertUser:      db.prepare(`
+    INSERT OR IGNORE INTO users (telegram_id, username, full_name, first_name, status, awaiting_code, created_at)
+    VALUES (@telegram_id, @username, @full_name, @first_name, 'unpaid', 0, @created_at)
   `),
-  setPending:    db.prepare("UPDATE users SET status = 'pending', mpesa_code = ? WHERE telegram_id = ?"),
-  setPaid:       db.prepare("UPDATE users SET status = 'paid', paid_at = ? WHERE telegram_id = ?"),
-  setUnpaid:     db.prepare("UPDATE users SET status = 'unpaid', mpesa_code = NULL WHERE telegram_id = ?"),
-  isCodeUsed:    db.prepare("SELECT code FROM used_codes WHERE code = ?"),
-  markCodeUsed:  db.prepare("INSERT OR IGNORE INTO used_codes (code, used_at) VALUES (?, ?)"),
-  saveMsg:       db.prepare("INSERT INTO chat_history (telegram_id, role, content, created_at) VALUES (?, ?, ?, ?)"),
-  getHistory:    db.prepare(`
+  setPending:      db.prepare("UPDATE users SET status = 'pending', mpesa_code = ?, awaiting_code = 0 WHERE telegram_id = ?"),
+  setPaid:         db.prepare("UPDATE users SET status = 'paid', paid_at = ? WHERE telegram_id = ?"),
+  setUnpaid:       db.prepare("UPDATE users SET status = 'unpaid', mpesa_code = NULL, awaiting_code = 0 WHERE telegram_id = ?"),
+  setAwaitingCode: db.prepare("UPDATE users SET awaiting_code = ? WHERE telegram_id = ?"),
+  isCodeUsed:      db.prepare("SELECT code FROM used_codes WHERE code = ?"),
+  markCodeUsed:    db.prepare("INSERT OR IGNORE INTO used_codes (code, used_at) VALUES (?, ?)"),
+  saveMsg:         db.prepare("INSERT INTO chat_history (telegram_id, role, content, created_at) VALUES (?, ?, ?, ?)"),
+  getHistory:      db.prepare(`
     SELECT role, content FROM chat_history
     WHERE telegram_id = ?
     ORDER BY created_at DESC
     LIMIT 12
   `),
-  allUsers:      db.prepare("SELECT full_name, username, status, telegram_id, created_at FROM users ORDER BY created_at DESC LIMIT 30"),
-  statsByStatus: db.prepare("SELECT status, COUNT(*) as count FROM users GROUP BY status"),
+  allUsers:        db.prepare("SELECT full_name, username, status, telegram_id, created_at FROM users ORDER BY created_at DESC LIMIT 30"),
+  statsByStatus:   db.prepare("SELECT status, COUNT(*) as count FROM users GROUP BY status"),
 };
 
-const getUser      = (id)                => stmts.getUser.get(id);
-const createUser   = (id, uname, full, first) =>
+const getUser         = (id)                => stmts.getUser.get(id);
+const createUser      = (id, uname, full, first) =>
   stmts.insertUser.run({ telegram_id: id, username: uname, full_name: full, first_name: first, created_at: now() });
-const setPending   = (id, code)          => stmts.setPending.run(code.toUpperCase(), id);
-const setPaid      = (id)                => stmts.setPaid.run(now(), id);
-const setUnpaid    = (id)                => stmts.setUnpaid.run(id);
-const isCodeUsed   = (code)              => !!stmts.isCodeUsed.get(code.toUpperCase());
-const markCodeUsed = (code)              => stmts.markCodeUsed.run(code.toUpperCase(), now());
-const saveMsg      = (id, role, content) => stmts.saveMsg.run(id, role, content, now());
-const getHistory   = (id)                => stmts.getHistory.all(id).reverse();
-const now          = ()                  => new Date().toISOString();
+const setPending      = (id, code)          => stmts.setPending.run(code.toUpperCase(), id);
+const setPaid         = (id)                => stmts.setPaid.run(now(), id);
+const setUnpaid       = (id)                => stmts.setUnpaid.run(id);
+const setAwaitingCode = (id, val)           => stmts.setAwaitingCode.run(val, id);
+const isCodeUsed      = (code)              => !!stmts.isCodeUsed.get(code.toUpperCase());
+const markCodeUsed    = (code)              => stmts.markCodeUsed.run(code.toUpperCase(), now());
+const saveMsg         = (id, role, content) => stmts.saveMsg.run(id, role, content, now());
+const getHistory      = (id)                => stmts.getHistory.all(id).reverse();
+const now             = ()                  => new Date().toISOString();
+
+// ─── KEYBOARDS ─────────────────────────────────────────────────────────────────
+
+// Shown to unpaid users — replaces text input with one big button
+const PAY_KEYBOARD = {
+  keyboard: [[{ text: "💳 I've Paid — Enter M-Pesa Code" }]],
+  resize_keyboard: true,
+  one_time_keyboard: false,
+  input_field_placeholder: "Tap the button below to continue...",
+};
+
+// Shown after they tap "I've Paid" — asks for code
+const ENTER_CODE_KEYBOARD = {
+  keyboard: [[{ text: "🔙 Back" }]],
+  resize_keyboard: true,
+  one_time_keyboard: false,
+  input_field_placeholder: "Type your M-Pesa code here, e.g. RG47XY1234",
+};
+
+// Shown to pending users
+const PENDING_KEYBOARD = {
+  keyboard: [[{ text: "🔄 Check Status" }]],
+  resize_keyboard: true,
+  one_time_keyboard: false,
+  input_field_placeholder: "Waiting for admin approval...",
+};
+
+// Remove keyboard (for paid users — free to chat)
+const REMOVE_KEYBOARD = { remove_keyboard: true };
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
 const escMd = (text) =>
@@ -110,18 +147,16 @@ const escMd = (text) =>
 const isMpesaCode = (text) =>
   /^[A-Z0-9]{8,15}$/i.test(text.replace(/\s/g, ""));
 
-const paymentPrompt = (firstName) =>
+// Payment info message (plain, shown with pay keyboard)
+const paymentScreen = (firstName) =>
   `👋 Hey *${escMd(firstName)}\\!*\n\n` +
-  `Welcome to *Nova AI* — your personal AI assistant\\.\n\n` +
+  `To unlock *Nova AI*, send *KSh ${escMd(PAYMENT_AMOUNT)}* via M\\-Pesa:\n\n` +
   `━━━━━━━━━━━━━━━━━━━━━━\n` +
-  `💳 *Unlock Access*\n` +
-  `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-  `Send *KSh ${escMd(PAYMENT_AMOUNT)}* via M\\-Pesa:\n\n` +
   `📱 *Till/Number:* \`${escMd(MPESA_NUMBER)}\`\n` +
-  `👤 *Name:* ${escMd(MPESA_NAME)}\n\n` +
-  `After paying, *send your M\\-Pesa confirmation code* here\\.\n` +
-  `_Example: \`RG47XY1234\`_\n\n` +
-  `⚡ Access is activated within minutes\\.`;
+  `👤 *Name:* ${escMd(MPESA_NAME)}\n` +
+  `💰 *Amount:* KSh ${escMd(PAYMENT_AMOUNT)}\n` +
+  `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+  `After paying, tap the button below 👇`;
 
 // ─── /start ────────────────────────────────────────────────────────────────────
 bot.onText(/\/start/, (msg) => {
@@ -134,22 +169,23 @@ bot.onText(/\/start/, (msg) => {
   if (user.status === "paid") {
     bot.sendMessage(id,
       `Welcome back, *${escMd(first_name)}\\!* 🎉\n\nI'm ready — what would you like to talk about\\?`,
-      { parse_mode: "MarkdownV2" }
+      { parse_mode: "MarkdownV2", reply_markup: REMOVE_KEYBOARD }
     );
   } else if (user.status === "pending") {
     bot.sendMessage(id,
       `⏳ Hi *${escMd(first_name)}\\!* Your payment is being reviewed\\. Please hang tight\\.`,
-      { parse_mode: "MarkdownV2" }
+      { parse_mode: "MarkdownV2", reply_markup: PENDING_KEYBOARD }
     );
   } else {
-    bot.sendMessage(id, paymentPrompt(first_name), { parse_mode: "MarkdownV2" });
+    setAwaitingCode(id, 0);
+    bot.sendMessage(id, paymentScreen(first_name), {
+      parse_mode: "MarkdownV2",
+      reply_markup: PAY_KEYBOARD,
+    });
   }
 });
 
 // ─── /approve (admin only) ─────────────────────────────────────────────────────
-// Usage:
-//   /approve        → approves yourself (the admin)
-//   /approve 123456 → approves any user by their Telegram ID
 bot.onText(/\/approve(?:\s+(\d+))?/, (msg, match) => {
   if (msg.from.id !== ADMIN_ID) return;
 
@@ -157,29 +193,26 @@ bot.onText(/\/approve(?:\s+(\d+))?/, (msg, match) => {
   const user = getUser(targetId);
 
   if (!user) {
-    bot.sendMessage(ADMIN_ID,
-      `❌ No user found with ID ${targetId}.\nThey must send /start to the bot first.`
-    );
+    bot.sendMessage(ADMIN_ID, `❌ No user found with ID ${targetId}.\nThey must send /start first.`);
     return;
   }
-
   if (user.status === "paid") {
     bot.sendMessage(ADMIN_ID, `ℹ️ ${user.full_name} is already approved.`);
     return;
   }
 
   setPaid(targetId);
-  bot.sendMessage(ADMIN_ID, `✅ ${user.full_name} (ID: ${targetId}) has been approved!`);
+  bot.sendMessage(ADMIN_ID, `✅ ${user.full_name} (ID: ${targetId}) approved!`);
 
   if (targetId !== ADMIN_ID) {
     bot.sendMessage(targetId,
-      `🎉 *Payment Verified\\!*\n\nYour access is now unlocked\\. Welcome to Nova AI\\! 🚀\n\nI'm your personal assistant — ask me anything, anytime\\.`,
-      { parse_mode: "MarkdownV2" }
+      `🎉 *Payment Verified\\!*\n\nWelcome to Nova AI\\! 🚀\n\nI'm your personal assistant — ask me anything\\.`,
+      { parse_mode: "MarkdownV2", reply_markup: REMOVE_KEYBOARD }
     ).catch(() => {});
   }
 });
 
-// ─── /myid — get your Telegram ID ─────────────────────────────────────────────
+// ─── /myid ─────────────────────────────────────────────────────────────────────
 bot.onText(/\/myid/, (msg) => {
   bot.sendMessage(msg.from.id, `🆔 Your Telegram ID is: ${msg.from.id}`);
 });
@@ -189,7 +222,6 @@ bot.onText(/\/users/, (msg) => {
   if (msg.from.id !== ADMIN_ID) return;
   const users = stmts.allUsers.all();
   if (!users.length) return bot.sendMessage(ADMIN_ID, "No users yet.");
-
   const emap = { paid: "✅", pending: "⏳", unpaid: "🔒" };
   const lines = ["👥 All Users:\n"];
   for (const { full_name, username, status, telegram_id } of users) {
@@ -205,9 +237,7 @@ bot.onText(/\/stats/, (msg) => {
   const total = rows.reduce((s, r) => s + r.count, 0);
   const emap  = { paid: "✅", pending: "⏳", unpaid: "🔒" };
   const lines = [`📊 Bot Stats\n\nTotal users: ${total}\n`];
-  for (const { status, count } of rows) {
-    lines.push(`${emap[status] ?? "❓"} ${status}: ${count}`);
-  }
+  for (const { status, count } of rows) lines.push(`${emap[status] ?? "❓"} ${status}: ${count}`);
   bot.sendMessage(ADMIN_ID, lines.join("\n"));
 });
 
@@ -230,26 +260,65 @@ bot.on("message", async (msg) => {
 
   // ── PENDING ────────────────────────────────────────────────────────────────
   if (user.status === "pending") {
+    if (text === "🔄 Check Status") {
+      bot.sendMessage(id,
+        "⏳ Still being verified\\. The admin will approve you shortly\\. Please wait\\.",
+        { parse_mode: "MarkdownV2", reply_markup: PENDING_KEYBOARD }
+      );
+    } else {
+      bot.sendMessage(id,
+        "⏳ Your payment is still being verified\\. Please be patient\\.",
+        { parse_mode: "MarkdownV2", reply_markup: PENDING_KEYBOARD }
+      );
+    }
+    return;
+  }
+
+  // ── UNPAID ─────────────────────────────────────────────────────────────────
+
+  // User tapped "I've Paid" button
+  if (text === "💳 I've Paid — Enter M-Pesa Code") {
+    setAwaitingCode(id, 1);
     bot.sendMessage(id,
-      "⏳ Your payment is still being verified. Please be patient — the admin will approve shortly."
+      `📩 Please type your *M\\-Pesa confirmation code* now\\.\n\n_Example: \`RG47XY1234\`_`,
+      { parse_mode: "MarkdownV2", reply_markup: ENTER_CODE_KEYBOARD }
     );
     return;
   }
 
-  // ── UNPAID: check if they sent an M-Pesa code ─────────────────────────────
-  if (isMpesaCode(text)) {
-    const code = text.replace(/\s/g, "").toUpperCase();
+  // User tapped "Back"
+  if (text === "🔙 Back") {
+    setAwaitingCode(id, 0);
+    bot.sendMessage(id, paymentScreen(first_name), {
+      parse_mode: "MarkdownV2",
+      reply_markup: PAY_KEYBOARD,
+    });
+    return;
+  }
 
-    if (isCodeUsed(code)) {
+  // User is in code-entry mode
+  if (user.awaiting_code === 1) {
+    if (!isMpesaCode(text)) {
       bot.sendMessage(id,
-        "❌ This M-Pesa code has already been used.\nPlease check your SMS and send the correct code."
+        `❌ That doesn't look like a valid M\\-Pesa code\\.\n\nCodes are 8\\-15 characters, letters and numbers only\\.\n_Example: \`RG47XY1234\`_`,
+        { parse_mode: "MarkdownV2", reply_markup: ENTER_CODE_KEYBOARD }
       );
       return;
     }
 
-    setPending(id, code);
+    const code = text.replace(/\s/g, "").toUpperCase();
 
-    // Plain text — no Markdown — to avoid parse errors from special chars in names
+    if (isCodeUsed(code)) {
+      bot.sendMessage(id,
+        "❌ This M\\-Pesa code has already been used\\.\nPlease check your SMS and send the correct code\\.",
+        { parse_mode: "MarkdownV2", reply_markup: ENTER_CODE_KEYBOARD }
+      );
+      return;
+    }
+
+    setPending(id, code); // also resets awaiting_code to 0
+
+    // Notify admin — plain text to avoid Markdown parse errors
     const adminText =
       `🔔 New Payment Claim\n\n` +
       `👤 Name: ${fullName}\n` +
@@ -274,15 +343,18 @@ bot.on("message", async (msg) => {
     }
 
     bot.sendMessage(id,
-      `✅ Code *${escMd(code)}* received\\!\n\n` +
-      `We're verifying your payment now\\. You'll be notified as soon as it's confirmed\\. ⏳`,
-      { parse_mode: "MarkdownV2" }
+      `✅ Code *${escMd(code)}* received\\!\n\nWe're verifying your payment now\\. You'll be notified shortly\\. ⏳`,
+      { parse_mode: "MarkdownV2", reply_markup: PENDING_KEYBOARD }
     );
     return;
   }
 
-  // ── UNPAID, no code ────────────────────────────────────────────────────────
-  bot.sendMessage(id, paymentPrompt(first_name), { parse_mode: "MarkdownV2" });
+  // Catch-all for unpaid users typing randomly
+  setAwaitingCode(id, 0);
+  bot.sendMessage(id, paymentScreen(first_name), {
+    parse_mode: "MarkdownV2",
+    reply_markup: PAY_KEYBOARD,
+  });
 });
 
 // ─── CALLBACK: Approve / Reject ────────────────────────────────────────────────
@@ -298,17 +370,14 @@ bot.on("callback_query", async (query) => {
   const [action, targetIdStr, code] = query.data.split("|");
   const targetId = parseInt(targetIdStr, 10);
 
-  // ── APPROVE ────────────────────────────────────────────────────────────────
   if (action === "approve") {
     setPaid(targetId);
     markCodeUsed(code);
 
     try {
       await bot.sendMessage(targetId,
-        `🎉 *Payment Verified\\!*\n\n` +
-        `Your access is now unlocked\\. Welcome to Nova AI\\! 🚀\n\n` +
-        `I'm your personal assistant — ask me anything, anytime\\.`,
-        { parse_mode: "MarkdownV2" }
+        `🎉 *Payment Verified\\!*\n\nYour access is now unlocked\\. Welcome to Nova AI\\! 🚀\n\nI'm your personal assistant — ask me anything, anytime\\.`,
+        { parse_mode: "MarkdownV2", reply_markup: REMOVE_KEYBOARD }
       );
     } catch (err) {
       console.error(`Could not message user ${targetId}:`, err.message);
@@ -322,19 +391,16 @@ bot.on("callback_query", async (query) => {
     } catch (_) {}
   }
 
-  // ── REJECT ─────────────────────────────────────────────────────────────────
   if (action === "reject") {
     setUnpaid(targetId);
 
     try {
       await bot.sendMessage(targetId,
-        `❌ *Payment Not Verified*\n\n` +
-        `We couldn't confirm your payment\\. Please check:\n` +
-        `• The M\\-Pesa code was entered correctly\n` +
+        `❌ *Payment Not Verified*\n\nWe couldn't confirm your payment\\. Please check:\n` +
+        `• The M\\-Pesa code was correct\n` +
         `• Payment was sent to the right number\n` +
-        `• The amount was KSh ${escMd(PAYMENT_AMOUNT)}\n\n` +
-        `Try again or contact support\\.`,
-        { parse_mode: "MarkdownV2" }
+        `• Amount was KSh ${escMd(PAYMENT_AMOUNT)}\n\nTap the button below to try again\\.`,
+        { parse_mode: "MarkdownV2", reply_markup: PAY_KEYBOARD }
       );
     } catch (err) {
       console.error(`Could not message user ${targetId}:`, err.message);
@@ -356,7 +422,6 @@ async function chatWithAI(telegramId, firstName, userText) {
   const history = getHistory(telegramId);
   saveMsg(telegramId, "user", userText);
 
-  // Gemini requires alternating user/model turns
   const geminiHistory = history.map(({ role, content }) => ({
     role:  role === "assistant" ? "model" : "user",
     parts: [{ text: content }],
