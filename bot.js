@@ -1,11 +1,11 @@
 /**
  * Nova AI — Telegram Bot (Node.js)
- * M-Pesa Manual Verification + Claude AI Chat
+ * M-Pesa Manual Verification + Gemini AI Chat
  */
 
 import "dotenv/config";
 import TelegramBot from "node-telegram-bot-api";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import Database from "better-sqlite3";
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
@@ -15,7 +15,7 @@ const {
   MPESA_NUMBER   = "0712XXXXXX",
   MPESA_NAME     = "Your Name",
   PAYMENT_AMOUNT = "500",
-  ANTHROPIC_API_KEY,
+  GEMINI_API_KEY,
   BOT_PERSONALITY = `You are Nova, a warm, clever, and friendly personal AI assistant.
 You speak naturally like a real person — use contractions, occasional humor,
 and always address the user by their first name when you know it.
@@ -24,14 +24,18 @@ Never mention that you are an AI unless directly and persistently asked.`,
 
 const ADMIN_ID = parseInt(ADMIN_TELEGRAM_ID, 10);
 
-if (!BOT_TOKEN || !ANTHROPIC_API_KEY || !ADMIN_ID) {
+if (!BOT_TOKEN || !GEMINI_API_KEY || !ADMIN_ID) {
   console.error("❌  Missing required env vars. Check your .env file.");
   process.exit(1);
 }
 
 // ─── CLIENTS ───────────────────────────────────────────────────────────────────
-const bot       = new TelegramBot(BOT_TOKEN, { polling: true });
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+const bot    = new TelegramBot(BOT_TOKEN, { polling: true });
+const genAI  = new GoogleGenerativeAI(GEMINI_API_KEY);
+const model  = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash",
+  systemInstruction: BOT_PERSONALITY,
+});
 
 // ─── DATABASE ──────────────────────────────────────────────────────────────────
 const db = new Database("users.db");
@@ -96,12 +100,10 @@ const setUnpaid    = (id)                => stmts.setUnpaid.run(id);
 const isCodeUsed   = (code)              => !!stmts.isCodeUsed.get(code.toUpperCase());
 const markCodeUsed = (code)              => stmts.markCodeUsed.run(code.toUpperCase(), now());
 const saveMsg      = (id, role, content) => stmts.saveMsg.run(id, role, content, now());
-const getHistory   = (id)                => stmts.getHistory.all(id).reverse(); // oldest first
+const getHistory   = (id)                => stmts.getHistory.all(id).reverse();
 const now          = ()                  => new Date().toISOString();
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
-
-// Escape all special chars for MarkdownV2
 const escMd = (text) =>
   String(text).replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, "\\$&");
 
@@ -182,13 +184,11 @@ bot.on("message", async (msg) => {
   createUser(id, username, fullName, first_name);
   const user = getUser(id);
 
-  // ── PAID → AI ──────────────────────────────────────────────────────────────
   if (user.status === "paid") {
     await chatWithAI(id, first_name, text);
     return;
   }
 
-  // ── PENDING ────────────────────────────────────────────────────────────────
   if (user.status === "pending") {
     bot.sendMessage(id,
       "⏳ Your payment is still being verified. Please be patient — the admin will approve shortly."
@@ -196,7 +196,6 @@ bot.on("message", async (msg) => {
     return;
   }
 
-  // ── UNPAID: check if they sent an M-Pesa code ─────────────────────────────
   if (isMpesaCode(text)) {
     const code = text.replace(/\s/g, "").toUpperCase();
 
@@ -209,7 +208,6 @@ bot.on("message", async (msg) => {
 
     setPending(id, code);
 
-    // Notify admin
     const adminText =
       `🔔 *New Payment Claim*\n\n` +
       `👤 *Name:* ${fullName}\n` +
@@ -244,7 +242,6 @@ bot.on("message", async (msg) => {
     return;
   }
 
-  // ── UNPAID, no code ────────────────────────────────────────────────────────
   bot.sendMessage(id, paymentPrompt(first_name), { parse_mode: "MarkdownV2" });
 });
 
@@ -258,12 +255,10 @@ bot.on("callback_query", async (query) => {
 
   bot.answerCallbackQuery(query.id);
 
-  // FIX: Use "|" as separator so M-Pesa codes with underscores don't break parsing
   const [action, targetIdStr, code] = query.data.split("|");
   const targetId = parseInt(targetIdStr, 10);
   const suffix   = action === "approve" ? "\n\n✅ *Approved by admin.*" : "\n\n❌ *Rejected by admin.*";
 
-  // ── APPROVE ────────────────────────────────────────────────────────────────
   if (action === "approve") {
     setPaid(targetId);
     markCodeUsed(code);
@@ -280,7 +275,6 @@ bot.on("callback_query", async (query) => {
     }
   }
 
-  // ── REJECT ─────────────────────────────────────────────────────────────────
   if (action === "reject") {
     setUnpaid(targetId);
 
@@ -299,7 +293,6 @@ bot.on("callback_query", async (query) => {
     }
   }
 
-  // Update admin message
   try {
     await bot.editMessageText(
       query.message.text + suffix,
@@ -312,31 +305,25 @@ bot.on("callback_query", async (query) => {
   } catch (_) {}
 });
 
-// ─── AI CHAT ───────────────────────────────────────────────────────────────────
+// ─── AI CHAT (Gemini) ──────────────────────────────────────────────────────────
 async function chatWithAI(telegramId, firstName, userText) {
   bot.sendChatAction(telegramId, "typing");
 
-  // Get history BEFORE saving the new message to avoid duplicate user turn
+  // Get history before saving new message
   const history = getHistory(telegramId);
-
-  // Save new user message
   saveMsg(telegramId, "user", userText);
 
-  // Build messages array: history + new user message
-  const messages = [
-    ...history.map(({ role, content }) => ({ role, content })),
-    { role: "user", content: userText },
-  ];
+  // Convert history to Gemini format (role: "user" | "model")
+  const geminiHistory = history.map(({ role, content }) => ({
+    role:  role === "assistant" ? "model" : "user",
+    parts: [{ text: content }],
+  }));
 
   try {
-    const response = await anthropic.messages.create({
-      model:      "claude-sonnet-4-5",   // FIX: corrected model name
-      max_tokens: 1000,
-      system:     BOT_PERSONALITY,
-      messages,
-    });
+    const chat = model.startChat({ history: geminiHistory });
+    const result = await chat.sendMessage(userText);
+    const reply  = result.response.text();
 
-    const reply = response.content[0].text;
     saveMsg(telegramId, "assistant", reply);
     bot.sendMessage(telegramId, reply);
 
